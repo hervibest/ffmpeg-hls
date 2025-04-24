@@ -43,10 +43,18 @@ var resolutions = map[string]struct {
 	"1080p": {"4000k", 1920, 1080},
 }
 
+func ResolvePath(parts ...string) string {
+	cwd, _ := os.Getwd()
+	return filepath.Join(append([]string{cwd}, parts...)...)
+}
+
 func (u *encodeUseCase) EncodeAndUpload(ctx context.Context, req *model.EncodeRequest) error {
-	req.InputPath = filepath.Join("tmp", fmt.Sprintf("%s.mp4", req.VideoID))
-	req.OutputDir = filepath.Join("tmp/output", req.VideoID)
+	req.InputPath = ResolvePath("usecase", "tmp", fmt.Sprintf("%s", req.VideoID))
+	req.OutputDir = ResolvePath("usecase", "tmp", "output", req.VideoID)
 	req.S3Prefix = fmt.Sprintf("courses/%s", req.VideoID)
+
+	log.Print("input : ", req.InputPath)
+	log.Print("output : ", req.OutputDir)
 
 	if err := os.MkdirAll(req.OutputDir, 0755); err != nil {
 		log.Printf("[USECASE][MkdirAll] %v", err)

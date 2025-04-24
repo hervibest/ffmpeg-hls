@@ -21,7 +21,7 @@ func TestEncode(t *testing.T) {
 	minio := util.InitMinio()
 	req := &model.EncodeRequest{
 		APIServer: serverKey,
-		VideoID:   "sample-5s",
+		VideoID:   "sample-5s.mp4",
 	}
 
 	encodeUC := NewEncodeUseCase(minio)
