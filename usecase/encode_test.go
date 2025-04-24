@@ -14,20 +14,15 @@ func TestEncode(t *testing.T) {
 		panic(err)
 	}
 
-	util.InitMinio()
+	minio := util.InitMinio()
 
 	req := EncodeRequest{
-		InputPath: "tmp/input.mp4",
-		OutputDir: "tmp/output/video1234",
-		S3Prefix:  "courses/123/video1234",
-		Bucket:    "ffmpeg",
-
-		APIServer: "http://localhost:5000",
-		VideoID:   "video1234",
+		APIServer: "http://192.168.0.115:5000",
+		VideoID:   "Profil Kandidat Emas PROPER 2021 _ PT. Pertamina Hulu Mahakam - South Processing Unit (SPU)",
 	}
 
 	ctx := context.Background()
-	err := EncodeAndUpload(ctx, req)
+	err := EncodeAndUpload(ctx, req, minio)
 	if err != nil {
 		log.Fatal(err)
 	}

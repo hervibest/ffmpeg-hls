@@ -11,10 +11,13 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-var minioClient *minio.Client
+type MinioClient struct {
+	minioClient *minio.Client
+	buckeName   string
+}
 
 // Init initializes MinIO client
-func InitMinio() {
+func InitMinio() *MinioClient {
 	var (
 		minioHost         = os.Getenv("MINIO_HOST")
 		minioPort         = os.Getenv("MINIO_PORT")
@@ -34,16 +37,14 @@ func InitMinio() {
 		log.Fatalf("Failed to initialize MinIO client: %v", err)
 	}
 
-	minioClient = client
-
 	// Make sure bucket exists
-	exists, err := minioClient.BucketExists(context.Background(), minioBucket)
+	exists, err := client.BucketExists(context.Background(), minioBucket)
 	if err != nil {
 		log.Fatalf("Error checking bucket: %v", err)
 	}
 
 	if !exists {
-		if err := minioClient.MakeBucket(context.Background(), minioBucket, minio.MakeBucketOptions{
+		if err := client.MakeBucket(context.Background(), minioBucket, minio.MakeBucketOptions{
 			Region: minioLocation,
 		}); err != nil {
 			log.Fatalf("Failed to create bucket: %v", err)
@@ -52,16 +53,25 @@ func InitMinio() {
 	} else {
 		log.Printf("Bucket already exists: %s", minioBucket)
 	}
+
+	return &MinioClient{
+		minioClient: client,
+		buckeName:   minioBucket,
+	}
 }
 
 // UploadToS3 uploads file to MinIO bucket
-func UploadToS3(ctx context.Context, bucket, objectName string, data []byte) error {
+func (u *MinioClient) UploadToS3(ctx context.Context, bucket, objectName string, data []byte) error {
 	reader := bytes.NewReader(data)
-	_, err := minioClient.PutObject(ctx, bucket, objectName, reader, int64(len(data)), minio.PutObjectOptions{
+	_, err := u.minioClient.PutObject(ctx, bucket, objectName, reader, int64(len(data)), minio.PutObjectOptions{
 		ContentType: "application/octet-stream",
 	})
 	if err != nil {
 		return fmt.Errorf("failed to upload %s: %w", objectName, err)
 	}
 	return nil
+}
+
+func (u *MinioClient) GetBucketName() string {
+	return u.buckeName
 }

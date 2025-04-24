@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HLS Video Player</title>
+    <!-- Core Video.js + VHS (HLS support for Chrome/Firefox) -->
+    <link href="https://vjs.zencdn.net/8.5.2/video-js.css" rel="stylesheet" />
+    <script src="https://vjs.zencdn.net/8.5.2/video.min.js"></script>
+    <!-- VHS HLS Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/@videojs/http-streaming@3.2.0/dist/videojs-http-streaming.min.js"></script>
+    <style>
+      body {
+        background-color: #121212;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        font-family: sans-serif;
+      }
+      video {
+        width: 80%;
+        max-width: 960px;
+      }
+      input,
+      select {
+        padding: 8px;
+        margin: 10px;
+        width: 300px;
+      }
+      button {
+        padding: 10px 20px;
+        background: #1e90ff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #0f78d1;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Play HLS Video (video.js)</h1>
+    <input
+      type="text"
+      id="videoIdInput"
+      placeholder="Enter video ID, e.g. 456"
+    />
+    <select id="qualitySelector"></select>
+    <button onclick="loadVideo()">Load Video</button>
+
+    <video
+      id="video"
+      class="video-js vjs-default-skin"
+      controls
+      preload="auto"
+    ></video>
+
+    <script>
+      const appUrl = "http://192.168.0.115:5000";
+      const qualitySelector = document.getElementById("qualitySelector");
+      let player;
+
+      function loadVideo() {
+        const videoId = document.getElementById("videoIdInput").value.trim();
+        if (!videoId) return alert("Please enter a video ID");
+
+        const masterUrl = `${appUrl}/videos/${videoId}/playlists/master.m3u8`;
+        fetch(masterUrl)
+          .then((res) => res.text())
+          .then((text) => {
+            const lines = text.split("\n");
+            const variants = [];
+
+            for (let i = 0; i < lines.length; i++) {
+              if (lines[i].startsWith("#EXT-X-STREAM-INF")) {
+                const label = lines[i + 1].trim();
+                variants.push(label);
+                i++;
+              }
+            }
+
+            qualitySelector.innerHTML = variants
+              .map((v) => `<option value="${v}">${v}</option>`)
+              .join("");
+
+            if (variants.length > 0) {
+              loadWithQuality(videoId, variants[0]);
+            }
+          })
+          .catch((err) => alert("Failed to load master playlist"));
+      }
+
+      function loadWithQuality(videoId, playlistName) {
+        const variantUrl = `${appUrl}/videos/${videoId}/playlists/${playlistName}`;
+
+        if (player) {
+            player.pause();
+            player.src({ src: variantUrl, type: 'application/x-mpegURL' });
+            player.load();
+            player.play();
+          }
+
+        player = videojs("video", {
+          controls: true,
+          autoplay: true,
+          preload: "auto",
+          fluid: true,
+          sources: [{
+            src: variantUrl,
+            type: 'application/x-mpegURL' // not application/vnd.apple.mpegurl
+          }]
+          
+        });
+      }
+
+      qualitySelector.addEventListener("change", () => {
+        const videoId = document.getElementById("videoIdInput").value.trim();
+        const selected = qualitySelector.value;
+        if (videoId && selected) {
+          loadWithQuality(videoId, selected);
+        }
+      });
+    </script>
+  </body>
+</html>

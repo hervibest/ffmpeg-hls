@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HLS Video Player</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    body {
+      background-color: #121212;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      font-family: sans-serif;
+    }
+    video {
+      width: 80%;
+      max-width: 960px;
+      border: 2px solid #ffffff44;
+      border-radius: 10px;
+    }
+    input, select {
+      padding: 8px;
+      margin: 10px;
+      width: 300px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #1e90ff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0f78d1;
+    }
+  </style>
+</head>
+<body>
+  <h1>Play HLS Video</h1>
+  <input type="text" id="videoIdInput" placeholder="Enter video ID, e.g. 456" />
+  <select id="qualitySelector"></select>
+  <button onclick="loadVideo()">Load Video</button>
+  <video id="video" controls></video>
+
+  <script>
+    const appUrl = "http://192.168.0.115:5000";
+    const qualitySelector = document.getElementById('qualitySelector');
+
+    function loadVideo() {
+      const videoId = document.getElementById('videoIdInput').value.trim();
+      if (!videoId) return alert('Please enter a video ID');
+
+      const masterUrl = `${appUrl}/videos/${videoId}/playlists/master.m3u8`;
+      fetch(masterUrl)
+        .then(res => res.text())
+        .then(text => {
+          const lines = text.split('\n');
+          const variants = [];
+
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].startsWith("#EXT-X-STREAM-INF")) {
+              const label = lines[i+1].trim();
+              variants.push(label);
+              i++; // skip next line since it's the .m3u8 path
+            }
+          }
+
+          qualitySelector.innerHTML = variants.map(v => `<option value="${v}">${v}</option>`).join('');
+
+          if (variants.length > 0) {
+            loadWithQuality(videoId, variants[0]);
+          }
+        })
+        .catch(err => alert("Failed to load master playlist"));
+    }
+
+    function loadWithQuality(videoId, playlistName) {
+      const video = document.getElementById('video');
+      const variantUrl = `${appUrl}/videos/${videoId}/playlists/${playlistName}`;
+
+      if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(variantUrl);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, function () {
+          video.play();
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = variantUrl;
+        video.addEventListener('loadedmetadata', function () {
+          video.play();
+        });
+      } else {
+        alert('Your browser does not support HLS');
+      }
+    }
+
+    qualitySelector.addEventListener("change", () => {
+      const videoId = document.getElementById('videoIdInput').value.trim();
+      const selected = qualitySelector.value;
+      if (videoId && selected) {
+        loadWithQuality(videoId, selected);
+      }
+    });
+  </script>
+</body>
+</html>
