@@ -2,8 +2,10 @@ package usecase
 
 import (
 	"context"
+	"ffmpeg-hls/model"
 	"ffmpeg-hls/util"
 	"log"
+	"os"
 	"testing"
 
 	"github.com/joho/godotenv"
@@ -14,15 +16,17 @@ func TestEncode(t *testing.T) {
 		panic(err)
 	}
 
+	serverKey := os.Getenv("HTTP_PROTOCOL") + os.Getenv("BASE_IP_URL") + ":" + os.Getenv("PORT")
+	log.Print(serverKey)
 	minio := util.InitMinio()
-
-	req := EncodeRequest{
-		APIServer: "http://192.168.0.115:5000",
-		VideoID:   "Profil Kandidat Emas PROPER 2021 _ PT. Pertamina Hulu Mahakam - South Processing Unit (SPU)",
+	req := &model.EncodeRequest{
+		APIServer: serverKey,
+		VideoID:   "sample-5s",
 	}
 
+	encodeUC := NewEncodeUseCase(minio)
 	ctx := context.Background()
-	err := EncodeAndUpload(ctx, req, minio)
+	err := encodeUC.EncodeAndUpload(ctx, req)
 	if err != nil {
 		log.Fatal(err)
 	}

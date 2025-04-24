@@ -5,21 +5,23 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
+	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-type MinioClient struct {
+type Minio struct {
 	minioClient *minio.Client
 	buckeName   string
 }
 
 // Init initializes MinIO client
-func InitMinio() *MinioClient {
+func InitMinio() *Minio {
 	var (
-		minioHost         = os.Getenv("MINIO_HOST")
+		minioHost         = os.Getenv("BASE_IP_URL")
 		minioPort         = os.Getenv("MINIO_PORT")
 		minioRootUser     = os.Getenv("MINIO_ROOT_USER")
 		minioRootPassword = os.Getenv("MINIO_ROOT_PASSWORD")
@@ -54,14 +56,14 @@ func InitMinio() *MinioClient {
 		log.Printf("Bucket already exists: %s", minioBucket)
 	}
 
-	return &MinioClient{
+	return &Minio{
 		minioClient: client,
 		buckeName:   minioBucket,
 	}
 }
 
 // UploadToS3 uploads file to MinIO bucket
-func (u *MinioClient) UploadToS3(ctx context.Context, bucket, objectName string, data []byte) error {
+func (u *Minio) UploadToS3(ctx context.Context, bucket, objectName string, data []byte) error {
 	reader := bytes.NewReader(data)
 	_, err := u.minioClient.PutObject(ctx, bucket, objectName, reader, int64(len(data)), minio.PutObjectOptions{
 		ContentType: "application/octet-stream",
@@ -72,6 +74,24 @@ func (u *MinioClient) UploadToS3(ctx context.Context, bucket, objectName string,
 	return nil
 }
 
-func (u *MinioClient) GetBucketName() string {
+func (u *Minio) GetBucketName() string {
 	return u.buckeName
+}
+
+func (u *Minio) GetObject(ctx context.Context, bucketName, objectName string, opts minio.GetObjectOptions) (*minio.Object, error) {
+	object, err := u.minioClient.GetObject(ctx, bucketName, objectName, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return object, nil
+}
+
+func (u *Minio) PresignedGetObject(ctx context.Context, bucketName, objectName string, expires time.Duration, reqParams url.Values) (*url.URL, error) {
+	object, err := u.minioClient.PresignedGetObject(ctx, bucketName, objectName, expires, reqParams)
+	if err != nil {
+		return nil, err
+	}
+
+	return object, nil
 }
